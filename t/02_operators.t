@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Martin Becker.  All rights reserved.
+# Copyright (c) 2013-2014 Martin Becker.  All rights reserved.
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: 02_operators.t 4 2013-06-01 20:56:56Z demetri $
+# $Id: 02_operators.t 17 2014-02-21 12:51:52Z demetri $
 
 # Checking operators.
 
@@ -13,7 +13,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 51;
+use Test::More tests => 57;
 use Math::Polynomial::Multivariate;
 
 #########################
@@ -118,5 +118,24 @@ my $casted = 0;
 my $py = $p->partial_derivative('y', sub { ++$casted; $_[0] });
 is("$py", "x + -3*y^2");                # 50
 is($casted, 2);                         # 51
+
+my @vars = $p->variables;
+is("@vars", "x y");                     # 52
+
+my $c;
+$c = $p->coefficient({});
+is($c, -2);                             # 53
+
+$c = $p->coefficient({x => 3});
+is($c, 0);                              # 54
+
+$c = $p->coefficient({z => 1});
+is($c, 0);                              # 55
+
+$c = $p->coefficient({x => 1, y => 1});
+is($c, 1);                              # 56
+
+my $pp = 2*$x - $x - $x - 2*$y + $y + $y;
+is("$pp", "0");                         # 57
 
 __END__

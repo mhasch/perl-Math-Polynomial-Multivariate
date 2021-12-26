@@ -8,6 +8,7 @@ lib/Math/Polynomial/Multivariate.pm
 t/01_basics.t
 t/02_operators.t
 t/03_bigrat.t
+t/04_squaring.t
 t/10_synopsis.t
 t/90_pod.t
 t/91_pod_cover_cp.t

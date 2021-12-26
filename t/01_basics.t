@@ -1,8 +1,8 @@
-# Copyright (c) 2013 Martin Becker.  All rights reserved.
+# Copyright (c) 2013-2014 Martin Becker.  All rights reserved.
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: 01_basics.t 6 2013-06-03 19:08:50Z demetri $
+# $Id: 01_basics.t 17 2014-02-21 12:51:52Z demetri $
 
 # Checking basic constructors and attribute accessors.
 
@@ -13,7 +13,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 45;
+use Test::More tests => 47;
 use Math::Polynomial::Multivariate;
 ok(1);                                  # 1
 
@@ -69,46 +69,50 @@ $r = $one->monomial(2, { 'x' => 0 });
 isa_ok($r, MPM);                        # 24
 is("$r", '2');                          # 25
 
+$r = eval { $one->monomial(3, { 'x' => -1 }) };
+is($r, undef);                          # 26
+like($@, qr/^hash of integer exponents expected/);  # 27
+
 my @v = $one->variables;
-is("@v", q[]);                          # 26
+is("@v", q[]);                          # 28
 
 @v = $p->variables;
-is("@v", 'x y');                        # 27
+is("@v", 'x y');                        # 29
 
 my @e = $p->exponents_of('x');
-is("@e", '1');                          # 28
+is("@e", '1');                          # 30
 
 my $f = $p->factor_of('x', 1);
-isa_ok($f, MPM);                        # 29
-is("$f", '3*y^2');                      # 30
+isa_ok($f, MPM);                        # 31
+is("$f", '3*y^2');                      # 32
 
 my $g = $p->factor_of('y', 1);
-isa_ok($g, MPM);                        # 31
-is("$g", '0');                          # 32
+isa_ok($g, MPM);                        # 33
+is("$g", '0');                          # 34
 
 my $h = $p->factor_of('z', 0);
-isa_ok($h, MPM);                        # 33
-is("$h", '3*x*y^2');                    # 34
+isa_ok($h, MPM);                        # 35
+is("$h", '3*x*y^2');                    # 36
 
-is($f->is_null, !1);                    # 35
-is($f->is_not_null, !0);                # 36
+is($f->is_null, !1);                    # 37
+is($f->is_not_null, !0);                # 38
 
-is($g->is_null, !0);                    # 37
-is($g->is_not_null, !1);                # 38
+is($g->is_null, !0);                    # 39
+is($g->is_not_null, !1);                # 40
 
-is($p->number_of_terms, 1);             # 39
-is($null->number_of_terms, 0);          # 40
+is($p->number_of_terms, 1);             # 41
+is($null->number_of_terms, 0);          # 42
 
-is($p->degree, 3);                      # 41
-ok($null->degree < -999999999);         # 42
+is($p->degree, 3);                      # 43
+ok($null->degree < -999999999);         # 44
 
 my $mp = $p->multidegree;
-is_deeply($mp, {'x' => 1, 'y' => 2});   # 43
+is_deeply($mp, {'x' => 1, 'y' => 2});   # 45
 
 my $mz = $null->multidegree;
-is_deeply($mz, {});                     # 44
+is_deeply($mz, {});                     # 46
 
 my $m2 = $two->multidegree;
-is_deeply($m2, {});                     # 45
+is_deeply($m2, {});                     # 47
 
 __END__

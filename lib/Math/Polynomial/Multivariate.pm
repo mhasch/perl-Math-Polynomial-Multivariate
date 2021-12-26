@@ -1,8 +1,8 @@
-# Copyright (c) 2011-2013 Martin Becker.  All rights reserved.
+# Copyright (c) 2011-2014 Martin Becker.  All rights reserved.
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: Multivariate.pm 13 2013-10-09 20:37:30Z demetri $
+# $Id: Multivariate.pm 17 2014-02-21 12:51:52Z demetri $
 
 package Math::Polynomial::Multivariate;
 
@@ -30,10 +30,15 @@ use overload (
 # Math::Polynomial::Multivariate=ARRAY(...)
 
 # .......... index ..........   # .......... value ..........
-use constant F_COEFF  => 0;     # coefficients hashref
+use constant F_TERMS  => 0;     # monomial terms hashref
 use constant F_ZERO   => 1;     # zero element of coefficient space
 use constant F_ONE    => 2;     # unit element of coefficient space
 use constant NFIELDS  => 3;
+
+# a term value is an anonymous arrayref:
+# .......... index ..........   # .......... value ..........
+use constant T_COEFF  => 0;     # coefficient
+use constant T_VARS   => 1;     # variables hashref, mapping names to exponents
 
 use constant K_SEP    => chr 0;
 use constant K_SEP_RE => qr/\0/;
@@ -42,28 +47,34 @@ use constant _MINUS_INFINITY => - (~0) ** (~0);
 
 # ----- class data -----
 
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 
 # ----- private subroutines -----
 
-# map a key or a list of keys to a variables hashref
-sub _vars {
-    my %vars = ();
-    foreach my $key (@_) {
-        my %rvars = split K_SEP_RE, $key;
-        while (my ($name, $rexp) = each %rvars) {
-            $vars{$name} += ord $rexp;
-        }
-    }
+# create a "clean" copy of a variables hashref, without zero exponents
+sub _vclean {
+    my %vars = %{$_[0]};
+    delete @vars{grep {!$vars{$_}} keys %vars};
+    die "hash of integer exponents expected"
+        if grep {!eval { $_ == int abs $_ }} values %vars;
     return \%vars;
 }
 
-# map a variables hashref to a key
+# map a clean variables hashref to a key
 sub _key {
     my ($vars) = @_;
     return
         join K_SEP,
-        map {($_, chr $vars->{$_})}
+        map { ($_, chr $vars->{$_}) }
+        reverse sort keys %{$vars};
+}
+
+# map an arbitrary variables hashref to a key
+sub _keyvc {
+    my ($vars) = @_;
+    return
+        join K_SEP,
+        map { ($_, chr $vars->{$_}) }
         reverse sort
         grep { $vars->{$_} }
         keys %{$vars};
@@ -90,7 +101,12 @@ sub _space {
 # create an independent duplicate of an object
 sub _clone {
     my ($this) = @_;
-    return bless [{%{$this->[F_COEFF]}}, @{$this}[F_ZERO, F_ONE]], ref $this;
+    my $terms = $this->[F_TERMS];
+    return
+        bless [
+            { map {($_ => [@{$terms->{$_}}])} keys %{$terms} },
+            @{$this}[F_ZERO, F_ONE]
+        ], ref $this;
 }
 
 # overloaded operators
@@ -98,9 +114,8 @@ sub _clone {
 sub _neg {
     my ($this) = @_;
     my $result = $this->_clone;
-    my $coeff  = $result->[F_COEFF];
-    foreach my $key (keys %{$coeff}) {
-        $coeff->{$key} = -$coeff->{$key};
+    foreach my $term (values %{$result->[F_TERMS]}) {
+        $term->[T_COEFF] = -$term->[T_COEFF];
     }
     return $result;
 }
@@ -109,17 +124,18 @@ sub _add {
     my ($this, $that) = @_;
     $that = $this->const($that) if !ref($that) || !$that->isa(__PACKAGE__);
     my $result = $this->_clone;
-    my $rcoeff = $result->[F_COEFF];
+    my $rterms = $result->[F_TERMS];
     my $zero   = $this->[F_ZERO];
-    while (my ($key, $const) = each %{$that->[F_COEFF]}) {
-        if (exists $rcoeff->{$key}) {
-            $rcoeff->{$key} += $const;
+    while (my ($key, $term) = each %{$that->[F_TERMS]}) {
+        if (exists $rterms->{$key}) {
+            if ($zero == ($rterms->{$key}->[T_COEFF] += $term->[T_COEFF])) {
+                delete $rterms->{$key};
+            }
         }
         else {
-            $rcoeff->{$key} = $const;
+            $rterms->{$key} = [@{$term}];
         }
     }
-    delete @{$rcoeff}{ grep {$zero == $rcoeff->{$_}} keys %{$rcoeff} };
     return $result;
 }
 
@@ -128,17 +144,19 @@ sub _sub {
     $that = $this->const($that) if !ref($that) || !$that->isa(__PACKAGE__);
     ($this, $that) = ($that, $this) if $swap;
     my $result = $this->_clone;
-    my $rcoeff = $result->[F_COEFF];
+    my $rterms = $result->[F_TERMS];
     my $zero   = $this->[F_ZERO];
-    while (my ($key, $const) = each %{$that->[F_COEFF]}) {
-        if (exists $rcoeff->{$key}) {
-            $rcoeff->{$key} -= $const;
+    while (my ($key, $term) = each %{$that->[F_TERMS]}) {
+        if (exists $rterms->{$key}) {
+            if ($zero == ($rterms->{$key}->[T_COEFF] -= $term->[T_COEFF])) {
+                delete $rterms->{$key};
+            }
         }
         else {
-            $rcoeff->{$key} = -$const;
+            my $rterm = $rterms->{$key} = [@{$term}];
+            $rterm->[T_COEFF] = -$rterm->[T_COEFF];
         }
     }
-    delete @{$rcoeff}{ grep {$zero == $rcoeff->{$_}} keys %{$rcoeff} };
     return $result;
 }
 
@@ -146,31 +164,36 @@ sub _mul {
     my ($this, $that) = @_;
     $that = $this->const($that) if !ref($that) || !$that->isa(__PACKAGE__);
     my $result = $this->null;
-    my $acoeff = $this->[F_COEFF];
-    my $bcoeff = $that->[F_COEFF];
-    my $rcoeff = $result->[F_COEFF];
+    my $bterms = $that->[F_TERMS];
+    my $rterms = $result->[F_TERMS];
     my $zero   = $this->[F_ZERO];
-    if ($bcoeff == $acoeff) {
-        $bcoeff = { %{$bcoeff} };
-    }
-    while (my ($akey, $aconst) = each %{$acoeff}) {
-        while (my ($bkey, $bconst) = each %{$bcoeff}) {
-            my $key = _key(_vars($akey, $bkey));
-            if (exists $rcoeff->{$key}) {
-                $rcoeff->{$key} += $aconst * $bconst;
+    foreach my $aterm (values %{$this->[F_TERMS]}) {
+        my @avars = %{$aterm->[T_VARS]};
+        foreach my $bterm (values %{$bterms}) {
+            my %vars = @avars;
+            my $const = $aterm->[T_COEFF] * $bterm->[T_COEFF];
+            my $bvars = $bterm->[T_VARS];
+            foreach my $bv (keys %{$bvars}) {
+                $vars{$bv} += $bvars->{$bv};
+            }
+            my $key = _key(\%vars);
+            if (exists $rterms->{$key}) {
+                $rterms->{$key}->[T_COEFF] += $const;
             }
             else {
-                $rcoeff->{$key} = $aconst * $bconst;
+                $rterms->{$key} = [$const, \%vars];
             }
         }
     }
-    delete @{$rcoeff}{ grep {$zero == $rcoeff->{$_}} keys %{$rcoeff} };
+    delete @{$rterms}{
+        grep {$zero == $rterms->{$_}->[T_COEFF]} keys %{$rterms}
+    };
     return $result;
 }
 
 sub _pow {
     my ($this, $exp, $swap) = @_;
-    croak 'illegal exponent' if $swap || $exp != int $exp;
+    croak 'illegal exponent' if $swap || $exp != int abs $exp;
     return $this->const($this->[F_ONE]) if !$exp;
     my $result = $this->_clone;
     while (--$exp > 0) {
@@ -182,11 +205,13 @@ sub _pow {
 sub _eq_ne {
     my ($this, $that, $eq) = @_;
     $that = $this->const($that) if !ref($that) || !$that->isa(__PACKAGE__);
-    my $acoeff = $this->[F_COEFF];
-    my $bcoeff = $that->[F_COEFF];
-    return !$eq if keys(%{$acoeff}) != keys(%{$bcoeff});
-    while (my ($key, $const) = each %{$acoeff}) {
-        return !$eq if !exists($bcoeff->{$key}) || $const != $bcoeff->{$key};
+    my $aterms = $this->[F_TERMS];
+    my $bterms = $that->[F_TERMS];
+    return !$eq if keys(%{$aterms}) != keys(%{$bterms});
+    while (my ($key, $term) = each %{$aterms}) {
+        return !$eq
+            if !exists($bterms->{$key}) ||
+                $term->[T_COEFF] != $bterms->{$key}->[T_COEFF];
     }
     return $eq;
 }
@@ -214,23 +239,25 @@ sub null {
 sub const {
     my ($this, $value) = @_;
     my ($class, $zero, $one) = $this->_space($value);
-    my %coeff = $zero == $value? (): (q[] => $value);
-    return bless [\%coeff, $zero, $one], $class;
+    my %terms = $zero == $value? (): (q[] => [$value, {}]);
+    return bless [\%terms, $zero, $one], $class;
 }
 
 sub var {
     my ($this, $varname) = @_;
     my ($class, $zero, $one) = $this->_space(1);
-    my $key = _key({ $varname => 1 });
-    my %coeff = ($key => $one);
-    return bless [\%coeff, $zero, $one], $class;
+    my $vars = { $varname => 1 };
+    my $key = _key($vars);
+    my %terms = ($key => [$one, $vars]);
+    return bless [\%terms, $zero, $one], $class;
 }
 
 sub monomial {
     my ($this, $const, $vars) = @_;
     my ($class, $zero, $one) = $this->_space($const);
-    my %coeff = $zero == $const? (): (_key($vars) => $const);
-    return bless[\%coeff, $zero, $one], $class;
+    $vars = _vclean($vars);
+    my %terms = $zero == $const? (): (_key($vars) => [$const, $vars]);
+    return bless[\%terms, $zero, $one], $class;
 }
 
 sub subst {
@@ -265,36 +292,36 @@ sub partial_derivative {
 
 # inspection methods
 
-sub is_null     {  !keys %{$_[0]->[F_COEFF]} }
-sub is_not_null { !!keys %{$_[0]->[F_COEFF]} }
+sub is_null     {  !keys %{$_[0]->[F_TERMS]} }
+sub is_not_null { !!keys %{$_[0]->[F_TERMS]} }
 
 sub variables {
     my ($this) = @_;
-    my $vars = _vars(keys %{$this->[F_COEFF]});
-    return sort keys %{$vars};
+    my %vars = map {%{$_->[T_VARS]}} values %{$this->[F_TERMS]};
+    return sort keys %vars;
 }
 
 sub exponents_of {
     my ($this, $varname) = @_;
-    my $coeff = $this->[F_COEFF];
+    my $terms = $this->[F_TERMS];
     my %exps = ();
-    foreach my $key (keys %{$coeff}) {
-        my $vars = _vars($key);
-        $exps{$vars->{$varname} || 0} = undef;
+    foreach my $term (values %{$terms}) {
+        $exps{$term->[T_VARS]->{$varname} || 0} = undef;
     }
     return sort { $a <=> $b } keys %exps;
 }
 
 sub factor_of {
     my ($this, $varname, $exp) = @_;
-    my $coeff  = $this->[F_COEFF];
+    my $terms  = $this->[F_TERMS];
     my $result = $this->null;
-    my $rcoeff = $result->[F_COEFF];
-    foreach my $key (keys %{$coeff}) {
-        my $vars = _vars($key);
-        if ($exp == ($vars->{$varname} || 0)) {
-            delete $vars->{$varname};
-            $rcoeff->{_key($vars)} = $coeff->{$key};
+    my $rterms = $result->[F_TERMS];
+    foreach my $term (values %{$terms}) {
+        my $aexp = $term->[T_VARS]->{$varname} || 0;
+        if ($aexp == $exp) {
+            my %vars = %{$term->[T_VARS]};
+            delete $vars{$varname};
+            $rterms->{_key(\%vars)} = [$term->[T_COEFF], \%vars];
         }
     }
     return $result;
@@ -302,21 +329,20 @@ sub factor_of {
 
 sub coefficient {
     my ($this, $vars) = @_;
-    my $key = _key($vars);
-    my $coeff = $this->[F_COEFF];
-    return exists($coeff->{$key})? $coeff->{$key}: $this->[F_ZERO];
+    my $key = _keyvc($vars);
+    my $terms = $this->[F_TERMS];
+    return exists($terms->{$key})? $terms->{$key}->[T_COEFF]: $this->[F_ZERO];
 }
 
 sub degree {
     my ($this) = @_;
-    my $coeff = $this->[F_COEFF];
-    return _MINUS_INFINITY if !keys %{$coeff};
+    my $terms = $this->[F_TERMS];
+    return _MINUS_INFINITY if !keys %{$terms};
     my $max_degree = 0;
-    foreach my $key (keys %{$coeff}) {
-        my $vars = _vars($key);
+    foreach my $term (values %{$terms}) {
         my $degree = 0;
-        foreach my $exp (values %{$vars}) {
-            $degree += $exp;
+        foreach my $e (values %{$term->[T_VARS]}) {
+            $degree += $e;
         }
         if ($max_degree < $degree) {
             $max_degree = $degree;
@@ -327,12 +353,11 @@ sub degree {
 
 sub multidegree {
     my ($this) = @_;
-    my $coeff = $this->[F_COEFF];
+    my $terms = $this->[F_TERMS];
     my %result = ();
-    foreach my $key (keys %{$coeff}) {
-        my $vars = _vars($key);
-        while (my ($name, $exp) = each %{$vars}) {
-            if (!exists($result{$name}) || $result{$name} < $exp) {
+    foreach my $term (values %{$terms}) {
+        while (my ($name, $exp) = each %{$term->[T_VARS]}) {
+            if (($result{$name} || 0) < $exp) {
                 $result{$name} = $exp;
             }
         }
@@ -340,7 +365,7 @@ sub multidegree {
     return \%result;
 }
 
-sub number_of_terms { scalar keys %{$_[0]->[F_COEFF]} }
+sub number_of_terms { scalar keys %{$_[0]->[F_TERMS]} }
 
 sub evaluate {
     my ($this, $values) = @_;
@@ -358,16 +383,19 @@ sub evaluate {
 
 sub as_monomials {
     my ($this) = @_;
-    my $coeff = $this->[F_COEFF];
-    return scalar keys %{$coeff}   if !wantarray;
-    return ([$this->[F_ZERO], {}]) if !keys %{$coeff};
-    return map { [$coeff->{$_}, _vars($_)] } sort keys %{$coeff};
+    my $terms = $this->[F_TERMS];
+    return scalar keys %{$terms}   if !wantarray;
+    return ([$this->[F_ZERO], {}]) if !keys %{$terms};
+    return
+        map {
+            my ($coeff, $vars) = @{$terms->{$_}};
+            [$coeff, {%{$vars}}]
+        } sort keys %{$terms};
 }
 
 sub as_string {
     my ($this) = @_;
-    my $coeff = $this->[F_COEFF];
-    my $one   = $this->[F_ONE];
+    my $one = $this->[F_ONE];
     return
         join q[ + ],
         map {
@@ -392,7 +420,7 @@ Math::Polynomial::Multivariate - Perl class for multivariate polynomials
 
 =head1 VERSION
 
-This documentation refers to version 0.004 of Math::Polynomial::Multivariate.
+This documentation refers to version 0.005 of Math::Polynomial::Multivariate.
 
 =head1 SYNOPSIS
 
@@ -919,7 +947,7 @@ Martin Becker, E<lt>becker-cpan-mp@cozap.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2011-2013 by Martin Becker.  All rights reserved.
+Copyright (c) 2011-2014 by Martin Becker.  All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.0 or,
