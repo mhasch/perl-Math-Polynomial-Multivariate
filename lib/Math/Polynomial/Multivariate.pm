@@ -2,7 +2,7 @@
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: Multivariate.pm 10 2013-06-03 21:06:40Z demetri $
+# $Id: Multivariate.pm 13 2013-10-09 20:37:30Z demetri $
 
 package Math::Polynomial::Multivariate;
 
@@ -42,7 +42,7 @@ use constant _MINUS_INFINITY => - (~0) ** (~0);
 
 # ----- class data -----
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 
 # ----- private subroutines -----
 
@@ -150,6 +150,9 @@ sub _mul {
     my $bcoeff = $that->[F_COEFF];
     my $rcoeff = $result->[F_COEFF];
     my $zero   = $this->[F_ZERO];
+    if ($bcoeff == $acoeff) {
+        $bcoeff = { %{$bcoeff} };
+    }
     while (my ($akey, $aconst) = each %{$acoeff}) {
         while (my ($bkey, $bconst) = each %{$bcoeff}) {
             my $key = _key(_vars($akey, $bkey));
@@ -353,25 +356,31 @@ sub evaluate {
     return $result->coefficient({});
 }
 
+sub as_monomials {
+    my ($this) = @_;
+    my $coeff = $this->[F_COEFF];
+    return scalar keys %{$coeff}   if !wantarray;
+    return ([$this->[F_ZERO], {}]) if !keys %{$coeff};
+    return map { [$coeff->{$_}, _vars($_)] } sort keys %{$coeff};
+}
+
 sub as_string {
     my ($this) = @_;
     my $coeff = $this->[F_COEFF];
-    return "$this->[F_ZERO]" if !keys %{$coeff};
-    my $one = $this->[F_ONE];
+    my $one   = $this->[F_ONE];
     return
         join q[ + ],
         map {
-            my $const = $coeff->{$_};
-            my $vars  = _vars($_);
+            my ($const, $vars) = @{$_};
             join q[*],
-            $one == $const && q[] ne $_? (): $const,
+            keys(%{$vars}) && $one == $const? (): $const,
             map {
                 my $exp = $vars->{$_};
                 1 == $exp? $_: "$_^$exp"
             }
             sort keys %{$vars}
         }
-        sort keys %{$coeff};
+        $this->as_monomials;
 }
 
 1;
@@ -383,7 +392,7 @@ Math::Polynomial::Multivariate - Perl class for multivariate polynomials
 
 =head1 VERSION
 
-This documentation refers to version 0.003 of Math::Polynomial::Multivariate.
+This documentation refers to version 0.004 of Math::Polynomial::Multivariate.
 
 =head1 SYNOPSIS
 
@@ -395,6 +404,11 @@ This documentation refers to version 0.003 of Math::Polynomial::Multivariate.
                     monomial(1, {'x' => 1, 'y' => 1});
   my $pol = $x**2 + $xy - $two;
   print "$pol\n";               # prints: -2 + x^2 + x*y
+
+  my @mon = $pol->as_monomials;
+  # assigns: ([-2, {}], [1, {x => 2}], [1, {x => 1, y => 1}])
+  my $n_terms = $pol->as_monomials;
+  print "$n_terms\n";           # prints: 3
 
   my $rat = Math::BigRat->new('-1/3');
   my $c   = Math::Polynomial::Multivariate->const($rat);
@@ -744,6 +758,18 @@ Example:
 
   1 + 2*x + x^2 + 2*y + 2*x*y + y^2
 
+=item as_monomials
+
+If C<$p> is a polynomial, C<$p-E<gt>as_monomials> returns a list
+of monomial term descriptors in the same order as as_string.
+A descriptor is an arrayref of a coefficient and a variables hashref
+(like the pair of parameters for the L</monomial> constructor).
+
+For the zero polynomial, a single term with a zero coefficient and an
+empty variables hash is returned.
+
+In scalar context, the number of nonzero terms is returned.
+
 =back
 
 =head2 EXPORT
@@ -845,7 +871,7 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Math-Polynomial-Multivariate>
 
 =head1 ROADMAP
 
-As of version 0.003, the module interface is still in beta state.
+As of version 0.004, the module interface is still in beta state.
 While upcoming improvements are intended to be mostly extensions,
 changes breaking backwards compatibility may yet be considered.
 
