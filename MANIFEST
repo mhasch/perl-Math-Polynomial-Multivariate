@@ -3,6 +3,7 @@ MANIFEST
 Makefile.PL
 README
 examples/ramanujan.pl
+examples/symmetric.pl
 examples/tutte.pl
 lib/Math/Polynomial/Multivariate.pm
 t/01_basics.t
