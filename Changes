@@ -1,5 +1,8 @@
 Revision history for Perl extension Math::Polynomial::Multivariate.
 
+0.003 Mon,  3 Jun 2013, 23:03:47 +0200
+        Fixed typo in POD.
+
 0.002 Mon,  3 Jun 2013, 21:01:33 +0200
         Compatibiliy fix: Infinity test was platform-dependent.
 

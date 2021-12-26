@@ -2,7 +2,7 @@
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: Multivariate.pm 6 2013-06-03 19:08:50Z demetri $
+# $Id: Multivariate.pm 10 2013-06-03 21:06:40Z demetri $
 
 package Math::Polynomial::Multivariate;
 
@@ -42,7 +42,7 @@ use constant _MINUS_INFINITY => - (~0) ** (~0);
 
 # ----- class data -----
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 # ----- private subroutines -----
 
@@ -383,7 +383,7 @@ Math::Polynomial::Multivariate - Perl class for multivariate polynomials
 
 =head1 VERSION
 
-This documentation refers to version 0.002 of Math::Polynomial::Multivariate.
+This documentation refers to version 0.003 of Math::Polynomial::Multivariate.
 
 =head1 SYNOPSIS
 
@@ -500,7 +500,7 @@ C<$const> must belong to the same coefficient space.
 In both cases, C<$vars> is a hashref mapping variable names to
 non-negative integer exponents.
 
-Example: C<$p->monomial(1, {'x' =E<gt> 1})> is equivalent to
+Example: C<$p-E<gt>monomial(1, {'x' =E<gt> 1})> is equivalent to
 C<$p-E<gt>var('x')>.
 
 =back
@@ -845,7 +845,7 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Math-Polynomial-Multivariate>
 
 =head1 ROADMAP
 
-As of version 0.002, the module interface is still in beta state.
+As of version 0.003, the module interface is still in beta state.
 While upcoming improvements are intended to be mostly extensions,
 changes breaking backwards compatibility may yet be considered.
 
