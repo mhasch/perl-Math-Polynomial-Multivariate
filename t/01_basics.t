@@ -2,7 +2,7 @@
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: 01_basics.t 4 2013-06-01 20:56:56Z demetri $
+# $Id: 01_basics.t 6 2013-06-03 19:08:50Z demetri $
 
 # Checking basic constructors and attribute accessors.
 
@@ -100,7 +100,7 @@ is($p->number_of_terms, 1);             # 39
 is($null->number_of_terms, 0);          # 40
 
 is($p->degree, 3);                      # 41
-is($null->degree, -inf);                # 42
+ok($null->degree < -999999999);         # 42
 
 my $mp = $p->multidegree;
 is_deeply($mp, {'x' => 1, 'y' => 2});   # 43

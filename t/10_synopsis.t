@@ -2,7 +2,7 @@
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: 10_synopsis.t 4 2013-06-01 20:56:56Z demetri $
+# $Id: 10_synopsis.t 6 2013-06-03 19:08:50Z demetri $
 
 # Checking synopsis examples
 
@@ -18,7 +18,7 @@ use lib 't/lib';
 use Test::MyUtils;
 BEGIN {
     use_or_bail('Math::BigRat');
-    plan tests => 11;
+    plan tests => 12;
 }
 use Math::Polynomial::Multivariate;
 
@@ -56,10 +56,11 @@ is("@exp", '0 1 2');                    # 8
 my $r   = $pol->factor_of('x', 1);
 is("$r", 'y');                          # 9
 my $d = $pol->degree;
+is("$d", '2');                          # 10
 my $z = $zero->degree;
-is("$d $z", '2 -inf');                  # 10
+ok($z < -999999999);                    # 11
 
-my $dx = $pol->partial_derivative('x');
-is("$dx", '2*x + y');                   # 11
+my $pd = $pol->partial_derivative('x');
+is("$pd", '2*x + y');                   # 12
 
 __END__

@@ -2,7 +2,7 @@
 # This package is free software; you can redistribute it and/or modify it
 # under the same terms as Perl itself.
 #
-# $Id: Multivariate.pm 4 2013-06-01 20:56:56Z demetri $
+# $Id: Multivariate.pm 6 2013-06-03 19:08:50Z demetri $
 
 package Math::Polynomial::Multivariate;
 
@@ -42,7 +42,7 @@ use constant _MINUS_INFINITY => - (~0) ** (~0);
 
 # ----- class data -----
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 
 # ----- private subroutines -----
 
@@ -383,7 +383,7 @@ Math::Polynomial::Multivariate - Perl class for multivariate polynomials
 
 =head1 VERSION
 
-This documentation refers to version 0.001 of Math::Polynomial::Multivariate.
+This documentation refers to version 0.002 of Math::Polynomial::Multivariate.
 
 =head1 SYNOPSIS
 
@@ -421,8 +421,10 @@ This documentation refers to version 0.001 of Math::Polynomial::Multivariate.
   my $r   = $pol->factor_of('x', 1);
   print "$r\n";                 # prints: y
   my $d = $pol->degree;
+  print "$d\n";                 # prints: 2
   my $z = $zero->degree;
-  print "$d $z\n";              # prints: 2 -inf
+  print "$z\n";                 # prints:
+  # platform-dependent equivalent of minus infinity
 
   my $pd = $pol->partial_derivative('x');
   print "$pd\n";                # prints: 2*x + y
@@ -843,7 +845,7 @@ L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Math-Polynomial-Multivariate>
 
 =head1 ROADMAP
 
-As of version 0.001, the module interface is still in beta state.
+As of version 0.002, the module interface is still in beta state.
 While upcoming improvements are intended to be mostly extensions,
 changes breaking backwards compatibility may yet be considered.
 
