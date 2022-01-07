@@ -1,7 +1,7 @@
-#!/usr/bin/perl
-# Copyright (c) 2017 Martin Becker.  All rights reserved.
+#!/usr/bin/env perl
+# Copyright (c) 2017-2022 Martin Becker, Blaubeuren.
 # This package is free software; you can redistribute it and/or modify it
-# under the same terms as Perl itself.
+# under the terms of the Artistic License 2.0 (see LICENSE file).
 
 # This example generates symmetric polynomials with a given number of
 # variables and a given degree.
